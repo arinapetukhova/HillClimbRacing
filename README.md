@@ -1,1 +1,1 @@
-# Hill Climb Racing AI
+# Nature Inspired Computing (Spring 2025). Hill Climb Racing
