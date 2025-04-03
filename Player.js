@@ -1,5 +1,6 @@
 class Player {
-  constructor(differentWorld) {
+  constructor(human = false) {
+    this.human = human;
     this.fitness = 0;
     this.vision = [];
     this.decision = [];
@@ -11,6 +12,8 @@ class Player {
     this.score = 0;
     this.gen = 0;
     this.world = otherWorld;
+    this.maxDistance = 0;
+    this.lastPosition = 0;
 
     this.shirtColorR = floor(random(255));
     this.shirtColorG = floor(random(255));
@@ -21,6 +24,10 @@ class Player {
 
     this.deadCount = 1;
     this.motorState = 2;
+    if (!human) {
+      this.brain = new NeuralNetwork(5, 4, 2);
+      //this.loadPresetWeights();
+    }
   }
 
   addToWorld() {
@@ -39,25 +46,77 @@ class Player {
   }
 
   move() {}
+
+  loadPresetWeights() {
+    this.brain.weights_ih = [
+      [1000, 1, 1, 1, 4],
+      [1, 1, 1, 1, 4],
+      [1, 1, 1, 1, 4],
+      [1, 1, 1, 1, 4]
+    ];
+    
+    this.brain.weights_ho = [
+      [3.4, 6.3, 7.5, 9.2],
+      [1.5, 9.2, 7.4, 8.3]
+    ];
+  }
+  
   update() {
-    if (this.car.dead) {
-      this.kindaDead = true;
-    }
-    if (!this.kindaDead || this.deadCount > 0) {
-      this.lifespan++;
-      this.car.update();
+    if (this.kindaDead) return;
+
+    if (this.human) {
+      if (this.car.dead) {
+        this.kindaDead = true;
+      }
+      if (!this.kindaDead || this.deadCount > 0) {
+        this.lifespan++;
+        this.car.update();
+      } else {
+        this.dead = true;
+      }
+
+      if (this.kindaDead) {
+        this.deadCount--;
+      }
+      this.score = max(1, floor((this.car.maxDistance - 349) / 10));
+
+      if (this.dead) {
+        this.removePlayerFromWorld();
+      }
     } else {
-      this.dead = true;
+      this.car.update();
+      this.AIControl();
+      this.score = max(1, floor((this.car.maxDistance - 349) / 10));
     }
+  }
 
-    if (this.kindaDead) {
-      this.deadCount--;
+  AIControl() {
+    const inputs = this.getCarState();
+    const output = this.brain.predict(inputs);
+    console.log(output)
+    if (output > 0) {
+      this.car.motorOn(true, output);
+    } 
+    else if (output < 0) {
+      this.car.motorOn(true, -output);
     }
-    this.score = max(1, floor((this.car.maxDistance - 349) / 10));
+    else {
+      this.car.motorOff();
+    }
+  }
 
-    if (this.dead) {
-      this.removePlayerFromWorld();
-    }
+  getCarState() {
+    const carPos = this.car.chassisBody.GetPosition();
+    const carVel = this.car.chassisBody.GetLinearVelocity();
+    const carAngle = this.car.chassisBody.GetAngle();
+
+    return [
+      (carPos.x - panX) / width,
+      carVel.x / 20,
+      carVel.y / 20,
+      carAngle / Math.PI,
+      this.car.wheels[0].onGround ? 1 : 0
+    ];
   }
 
   look() {

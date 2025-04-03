@@ -20,6 +20,12 @@ class Car {
     this.maxDistance = 0;
     this.motorState = 0;
 
+    this.maxMotorSpeed = 13;
+    this.currentSpeed = 0;
+    this.accelerationRate = 0.2;
+    this.decelerationRate = 0.3; 
+    this.simpleMode = true
+
     var bodyDef = new b2BodyDef();
     bodyDef.type = b2DynamicBody;
     bodyDef.position.x = x / SCALE;
@@ -233,43 +239,109 @@ class Car {
     }
   }
 
-  motorOn(forward) {
-    var motorSpeed = 13;
+  motorOnSimple(forward) {
+    this.simpleMode = true;
+    const motorSpeed = this.maxMotorSpeed;
+    
     this.wheels[0].joint.EnableMotor(true);
     this.wheels[1].joint.EnableMotor(true);
-    var oldState = this.motorState;
+    
+    const oldState = this.motorState;
+    
     if (forward) {
       this.motorState = 1;
       this.wheels[0].joint.SetMotorSpeed(-motorSpeed * PI);
       this.wheels[1].joint.SetMotorSpeed(-motorSpeed * PI);
-
       this.chassisBody.ApplyTorque(-this.rotationTorque);
     } else {
       this.motorState = -1;
       this.wheels[0].joint.SetMotorSpeed(motorSpeed * PI);
       this.wheels[1].joint.SetMotorSpeed(motorSpeed * PI);
     }
-    if (oldState + this.motorState == 0) {
-      if (oldState == 1) {
-        this.applyTorque(this.motorState * -1);
-      }
+    
+    if (oldState + this.motorState == 0 && oldState == 1) {
+      this.applyTorque(this.motorState * -1);
     }
+    
     this.wheels[0].joint.SetMaxMotorTorque(700);
     this.wheels[1].joint.SetMaxMotorTorque(350);
   }
 
+  motorOnAdvanced(forward, accelerationInput = 1.0) {
+    this.simpleMode = false;
+    
+    this.wheels[0].joint.EnableMotor(true);
+    this.wheels[1].joint.EnableMotor(true);
+    
+    const targetSpeed = this.maxMotorSpeed * accelerationInput;
+    const direction = forward ? -1 : 1;
+    
+    if ((forward && this.motorState > 0) || (!forward && this.motorState < 0)) {
+      this.currentSpeed = this.lerp(this.currentSpeed, targetSpeed, this.accelerationRate);
+    } else {
+      this.currentSpeed = this.lerp(this.currentSpeed, 0, this.decelerationRate);
+      if (Math.abs(this.currentSpeed) < 0.5) {
+        this.currentSpeed = 0;
+        this.motorState = forward ? 1 : -1;
+      }
+    }
+    
+    const wheelSpeed = this.currentSpeed * PI * direction;
+    this.wheels[0].joint.SetMotorSpeed(wheelSpeed);
+    this.wheels[1].joint.SetMotorSpeed(wheelSpeed);
+    
+    if (forward) {
+      this.chassisBody.ApplyTorque(-this.rotationTorque * accelerationInput);
+    }
+    
+    this.wheels[0].joint.SetMaxMotorTorque(700 * accelerationInput);
+    this.wheels[1].joint.SetMaxMotorTorque(350 * accelerationInput);
+  }
+
+  motorOn(forward, accelerationInput) {
+    if (accelerationInput !== undefined) {
+      this.motorOnAdvanced(forward, accelerationInput);
+    } else {
+      this.motorOnSimple(forward);
+    }
+  }
+
+  motorOff() {
+    if (this.simpleMode) {
+      switch (this.motorState) {
+        case 1:
+          this.chassisBody.ApplyTorque(this.motorState * this.rotationTorque);
+          break;
+      }
+      this.motorState = 0;
+      this.wheels[0].joint.EnableMotor(false);
+      this.wheels[1].joint.EnableMotor(false);
+    } else {
+      this.currentSpeed = this.lerp(this.currentSpeed, 0, this.decelerationRate);
+      
+      if (Math.abs(this.currentSpeed) < 0.1) {
+        this.wheels[0].joint.EnableMotor(false);
+        this.wheels[1].joint.EnableMotor(false);
+        this.currentSpeed = 0;
+        this.motorState = 0;
+      } else {
+        const direction = this.motorState > 0 ? -1 : 1;
+        const wheelSpeed = this.currentSpeed * PI * direction;
+        this.wheels[0].joint.SetMotorSpeed(wheelSpeed);
+        this.wheels[1].joint.SetMotorSpeed(wheelSpeed);
+      }
+      
+      if (this.motorState === 1) {
+        this.chassisBody.ApplyTorque(this.rotationTorque);
+      }
+    }
+  }
+
+  lerp(start, end, t) {
+    return start * (1 - t) + end * t;
+  }
+
   applyTorque(direction) {
     this.chassisBody.ApplyTorque(direction * this.rotationTorque);
-  }
-  motorOff() {
-    switch (this.motorState) {
-      case 1:
-        this.chassisBody.ApplyTorque(this.motorState * this.rotationTorque);
-        break;
-    }
-    this.motorState = 0;
-
-    this.wheels[0].joint.EnableMotor(false);
-    this.wheels[1].joint.EnableMotor(false);
   }
 }

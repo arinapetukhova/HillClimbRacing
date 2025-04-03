@@ -42,6 +42,9 @@ var panY = 0;
 
 var leftDown = false;
 var rightDown = false;
+var accelerationInput = 0;
+var targetAcceleration = 0;
+var accelerationStep = 0.1;
 var listener = new Box2D.Dynamics.b2ContactListener();
 
 var carSprite;
@@ -73,7 +76,7 @@ var PERSON_MASK = GRASS_CATEGORY;
 
 var speed = 60;
 
-var humanPlaying = true;
+var humanPlaying = false;
 
 var humanPlayer;
 
@@ -193,7 +196,7 @@ function resetGame() {
   curGround.setBodies(otherWorld);
   otherWorld.SetContactListener(listener);
 
-  humanPlayer = new Player(true);
+  humanPlayer = new Player(humanPlaying);
   humanPlayer.addToWorld(otherWorld);
 }
 
@@ -202,13 +205,24 @@ function draw() {
   drawToScreen();
   nextPanX = -100;
   otherWorld.Step(1 / 30, 10, 10);
-  if (humanPlayer.kindaDead) {
-    resetGame();
-    return;
+
+  if (humanPlaying) {
+    if (humanPlayer.kindaDead) {
+      resetGame();
+      return;
+    }
+    humanPlayer.update();
+    humanPlayer.show();
+    humanPlayer.look();
+  } else {
+    if (humanPlayer.kindaDead) {
+      resetGame();
+      return;
+    }
+    humanPlayer.update();
+    humanPlayer.show();
+    humanPlayer.look();
   }
-  humanPlayer.update();
-  humanPlayer.show();
-  humanPlayer.look();
 
   targetPanX = nextPanX;
   let tempMult = 1;
@@ -248,19 +262,27 @@ function writeInfo() {
 }
 
 function keyPressed() {
-  switch (keyCode) {
-    case UP_ARROW:
-      break;
-    case DOWN_ARROW:
-      break;
-    case LEFT_ARROW:
-      leftDown = true;
-      humanPlayer.car.motorOn(false);
-      break;
-    case RIGHT_ARROW:
-      rightDown = true;
-      humanPlayer.car.motorOn(true);
-      break;
+  if (key === ' ') {
+    humanPlaying = !humanPlaying;
+    resetGame();
+    return;
+  }
+  
+  if (humanPlaying) {
+    switch (keyCode) {
+      case UP_ARROW:
+        break;
+      case DOWN_ARROW:
+        break;
+      case LEFT_ARROW:
+        leftDown = true;
+        humanPlayer.car.motorOn(false);
+        break;
+      case RIGHT_ARROW:
+        rightDown = true;
+        humanPlayer.car.motorOn(true);
+        break;
+    }
   }
 }
 
