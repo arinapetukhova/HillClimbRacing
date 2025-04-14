@@ -88,6 +88,13 @@ var skySprite;
 var darknessSprite;
 var difficulty = 50;
 
+var population = [];
+var generation = 1;
+var bestScores = [];
+var grounds = [];
+var cameraOffsetX = 400;
+var cameraOffsetY = 200;
+
 listener.BeginContact = function (contact) {
   let world = contact.GetFixtureA().GetBody().GetWorld();
   if (reset) {
@@ -178,6 +185,12 @@ function setup() {
   window.canvas = createCanvas(1280, 720);
   canvas.parent("canvas");
   frameRate(30);
+
+  //Initializing a population
+  for (let i = 0; i < 50; i++) {
+    population.push(new Player(false));
+  }
+
   resetGame();
 }
 
@@ -196,8 +209,16 @@ function resetGame() {
   curGround.setBodies(otherWorld);
   otherWorld.SetContactListener(listener);
 
-  humanPlayer = new Player(humanPlaying);
-  humanPlayer.addToWorld(otherWorld);
+  grounds = [curGround];
+
+  for (let player of population) {
+    player.world = otherWorld;
+    player.addToWorld();
+    player.dead = false;
+    player.kindaDead = false;
+    player.score = 0;
+    player.car.maxDistance = 0;
+  }
 }
 
 function draw() {
@@ -206,38 +227,50 @@ function draw() {
   nextPanX = -100;
   otherWorld.Step(1 / 30, 10, 10);
 
-  if (humanPlaying) {
-    if (humanPlayer.kindaDead) {
-      resetGame();
-      return;
+  let allDead = true;
+  let bestX = 0;
+  let bestPlayer = null;
+
+  for (let player of population) {
+    if (!player.dead && !player.kindaDead) {
+      allDead = false;
+      player.update();
+      player.show();
+      player.look();
+
+      if (player.car.chassisBody) {
+        let x = player.car.chassisBody.GetPosition().x * SCALE;
+        if (x > bestX) {
+          bestX = x;
+          bestPlayer = player;
+        }
+      }
     }
-    humanPlayer.update();
-    humanPlayer.show();
-    humanPlayer.look();
-  } else {
-    if (humanPlayer.kindaDead) {
-      resetGame();
-      return;
-    }
-    humanPlayer.update();
-    humanPlayer.show();
-    humanPlayer.look();
   }
 
+  if (allDead) {
+    nextGeneration();
+    resetGame();
+    return;
+  }
   targetPanX = nextPanX;
   let tempMult = 1;
-  if (abs(targetPanX - panX) > 20 * panSpeed) {
-    tempMult = 5;
-  }
-  if (abs(targetPanX - panX) < panSpeed * tempMult) {
-    panX = targetPanX;
-  } else if (targetPanX - panX < 0) {
-    panX -= panSpeed * tempMult;
-  } else {
-    panX += panSpeed * tempMult;
+
+  if (bestPlayer && bestPlayer.car.chassisBody) {
+    let carX = bestPlayer.car.chassisBody.GetPosition().x * SCALE;
+    let carY = bestPlayer.car.chassisBody.GetPosition().y * SCALE;
+
+    targetPanX = carX - cameraOffsetX;
+    targetPanY = carY - cameraOffsetY;
+
+    targetPanX = max(0, targetPanX);
+    targetPanY = max(0, min(targetPanY, height / 2));
+
+    panX = lerp(panX, targetPanX, 0.1);
+    panY = lerp(panY, targetPanY, 0.1);
   }
 
-  if (!shownGround) {
+  if (!shownGround && grounds.length > 0) {
     grounds[0].show();
   }
   if (panX < 0) {
@@ -258,16 +291,33 @@ function writeInfo() {
   strokeWeight(1);
   textAlign(LEFT);
   textSize(30);
-  text("Score: " + humanPlayer.score, 100, 50);
+
+  let bestScore = 0;
+  for (let player of population) {
+    if (player.bestScore > bestScore) {
+      bestScore = player.bestScore;
+    }
+  }
+  text("Score: " + bestScore, 100, 50);
+  text("Generation: " + generation, 100, 90);
+
+  textSize(20);
+  for (let i = 0; i < bestScores.length; i++) {
+    text(
+      "Gen " + (generation - bestScores.length + i) + ": " + bestScores[i],
+      100,
+      130 + i * 25
+    );
+  }
 }
 
 function keyPressed() {
-  if (key === ' ') {
+  if (key === " ") {
     humanPlaying = !humanPlaying;
     resetGame();
     return;
   }
-  
+
   if (humanPlaying) {
     switch (keyCode) {
       case UP_ARROW:
@@ -307,4 +357,73 @@ function keyReleased() {
         break;
     }
   }
+}
+
+function nextGeneration() {
+  population.sort((a, b) => b.bestScore - a.bestScore);
+
+  bestScores.push(population[0].bestScore);
+  if (bestScores.length > 20) bestScores.shift();
+
+  let topPlayers = population.slice(0, 20);
+
+  population = [];
+
+  for (let i = 0; i < 10; i++) {
+    let player = topPlayers[i];
+    player.bestScore = 0;
+    population.push(player);
+  }
+
+  for (let i = 10; i < 50; i++) {
+    let parentA = random(topPlayers);
+    let parentB = random(topPlayers);
+
+    let child = new Player(false);
+    child.brain = crossover(parentA.brain, parentB.brain);
+    child.brain.mutate(0.8, 0.3, 0.1);
+    population.push(child);
+  }
+
+  generation++;
+}
+
+function crossover(brainA, brainB) {
+  let newBrain = new NeuralNetwork(brainA.inputNodes, brainA.hiddenNodes);
+
+  for (let i = 0; i < brainA.weights_ih.length; i++) {
+    for (let j = 0; j < brainA.weights_ih[i].length; j++) {
+      newBrain.weights_ih[i][j] =
+        random() > 0.5 ? brainA.weights_ih[i][j] : brainB.weights_ih[i][j];
+    }
+  }
+
+  for (let i = 0; i < brainA.weights_ho.length; i++) {
+    for (let j = 0; j < brainA.weights_ho[i].length; j++) {
+      newBrain.weights_ho[i][j] =
+        random() > 0.5 ? brainA.weights_ho[i][j] : brainB.weights_ho[i][j];
+
+      if (random() < 0.1) {
+        newBrain.weights_ho[i][j] += random(-0.2, 0.2);
+      }
+    }
+  }
+
+  for (let i = 0; i < brainA.bias_h.length; i++) {
+    newBrain.bias_h[i] = random() > 0.5 ? brainA.bias_h[i] : brainB.bias_h[i];
+
+    if (random() < 0.1) {
+      newBrain.bias_h[i] += random(-0.2, 0.2);
+    }
+  }
+
+  for (let i = 0; i < brainA.bias_o.length; i++) {
+    newBrain.bias_o[i] = random() > 0.5 ? brainA.bias_o[i] : brainB.bias_o[i];
+
+    if (random() < 0.1) {
+      newBrain.bias_o[i] += random(-0.2, 0.2);
+    }
+  }
+
+  return newBrain;
 }

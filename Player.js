@@ -11,7 +11,7 @@ class Player {
     this.kindaDead = false;
     this.score = 0;
     this.gen = 0;
-    this.world = otherWorld;
+    this.world = null;
     this.maxDistance = 0;
     this.lastPosition = 0;
 
@@ -20,19 +20,24 @@ class Player {
     this.shirtColorB = floor(random(255));
 
     this.lastGrounded = 0;
-    this.car;
+    this.car = null;
 
     this.deadCount = 1;
     this.motorState = 2;
     if (!human) {
       this.brain = new NeuralNetwork(5, 4, 2);
-      //this.loadPresetWeights();
     }
   }
 
   addToWorld() {
+    if (!this.world) return;
+    if (this.car) {
+      this.removePlayerFromWorld();
+    }
     this.car = new Car(350, spawningY, this.world, this);
     this.car.setShirt();
+    this.dead = false;
+    this.kindaDead = false;
   }
 
   show() {
@@ -48,19 +53,20 @@ class Player {
   move() {}
 
   loadPresetWeights() {
+    // Example preset weights that might work okay
     this.brain.weights_ih = [
       [1000, 1, 1, 1, 4],
       [1, 1, 1, 1, 4],
       [1, 1, 1, 1, 4],
-      [1, 1, 1, 1, 4]
+      [1, 1, 1, 1, 4],
     ];
-    
+
     this.brain.weights_ho = [
       [3.4, 6.3, 7.5, 9.2],
-      [1.5, 9.2, 7.4, 8.3]
+      [1.5, 9.2, 7.4, 8.3],
     ];
   }
-  
+
   update() {
     if (this.kindaDead) return;
 
@@ -87,35 +93,42 @@ class Player {
       this.car.update();
       this.AIControl();
       this.score = max(1, floor((this.car.maxDistance - 349) / 10));
+
+      if (this.score > this.bestScore) {
+        this.bestScore = this.score;
+      }
     }
   }
 
   AIControl() {
     const inputs = this.getCarState();
-    const output = this.brain.predict(inputs);
-    console.log(output)
+    const output = this.brain.predict(inputs); // Single value
+    console.log(output);
+    // Interpret output:
+    // > 0 = right acceleration (0-1)
+    // < 0 = left acceleration (0-1)
     if (output > 0) {
-      this.car.motorOn(true, output);
-    } 
-    else if (output < 0) {
-      this.car.motorOn(true, -output);
-    }
-    else {
+      this.car.motorOn(true, output); // Right with intensity
+    } else if (output < 0) {
+      this.car.motorOn(true, -output); // Left with intensity
+    } else {
       this.car.motorOff();
     }
   }
 
   getCarState() {
+    // Get relevant car information
     const carPos = this.car.chassisBody.GetPosition();
     const carVel = this.car.chassisBody.GetLinearVelocity();
     const carAngle = this.car.chassisBody.GetAngle();
 
+    // Normalize inputs (values between 0 and 1)
     return [
-      (carPos.x - panX) / width,
-      carVel.x / 20,
-      carVel.y / 20,
-      carAngle / Math.PI,
-      this.car.wheels[0].onGround ? 1 : 0
+      (carPos.x - panX) / width, 
+      carVel.x / 20, 
+      carVel.y / 20, 
+      carAngle / Math.PI, 
+      this.car.wheels[0].onGround ? 1 : 0, 
     ];
   }
 
