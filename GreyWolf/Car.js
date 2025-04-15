@@ -20,9 +20,9 @@ class Car {
     this.maxDistance = 0;
     this.motorState = 0;
 
-    this.maxMotorSpeed = 13; // Same as your current motorSpeed
+    this.maxMotorSpeed = 100;
     this.currentSpeed = 0;
-    this.accelerationRate = 0.2; // Adjust for faster/slower acceleration
+    this.accelerationRate = 0.2;
     this.decelerationRate = 0.3;
     this.simpleMode = true;
 
@@ -165,7 +165,7 @@ class Car {
     distJointDef.length *= 1.1;
     this.distJoint = this.world.CreateJoint(distJointDef);
 
-    this.chassisBody.SetAngularDamping(0.1);
+    this.chassisBody.SetAngularDamping(0.4);
 
     this.rotationTorque = 2;
 
@@ -258,9 +258,27 @@ class Car {
     this.wheels[1].joint.SetMaxMotorTorque(350);
   }
 
-  // Advanced control for neural network
   motorOnAdvanced(forward, accelerationInput = 1.0) {
     this.simpleMode = false;
+
+    accelerationInput = constrain(accelerationInput, 0.1, 1.0);
+    const currentAngle = this.chassisBody.GetAngle();
+    const angularVel = this.chassisBody.GetAngularVelocity();
+    const maxAngularVel = 3.0;
+
+    if (Math.abs(angularVel) > maxAngularVel) {
+        this.chassisBody.SetAngularVelocity(
+            Math.sign(angularVel) * maxAngularVel
+        );
+    }
+
+    const maxSafeAngle = 0.5;
+    let stabilityFactor = 1.0;
+    
+    if (Math.abs(currentAngle) > maxSafeAngle) {
+        stabilityFactor = map(Math.abs(currentAngle), maxSafeAngle, PI/2, 0.5, 0.1, true);
+        accelerationInput *= stabilityFactor;
+    }
 
     this.wheels[0].joint.EnableMotor(true);
     this.wheels[1].joint.EnableMotor(true);
@@ -269,21 +287,21 @@ class Car {
     const direction = forward ? -1 : 1;
 
     if ((forward && this.motorState > 0) || (!forward && this.motorState < 0)) {
-      this.currentSpeed = this.lerp(
-        this.currentSpeed,
-        targetSpeed,
-        this.accelerationRate
-      );
+        this.currentSpeed = this.lerp(
+            this.currentSpeed,
+            targetSpeed,
+            this.accelerationRate * stabilityFactor
+        );
     } else {
-      this.currentSpeed = this.lerp(
-        this.currentSpeed,
-        0,
-        this.decelerationRate
-      );
-      if (Math.abs(this.currentSpeed) < 0.5) {
-        this.currentSpeed = 0;
-        this.motorState = forward ? 1 : -1;
-      }
+        this.currentSpeed = this.lerp(
+            this.currentSpeed,
+            0,
+            this.decelerationRate
+        );
+        if (Math.abs(this.currentSpeed) < 0.5) {
+            this.currentSpeed = 0;
+            this.motorState = forward ? 1 : -1;
+        }
     }
 
     const wheelSpeed = this.currentSpeed * PI * direction;
@@ -291,14 +309,21 @@ class Car {
     this.wheels[1].joint.SetMotorSpeed(wheelSpeed);
 
     if (forward) {
-      this.chassisBody.ApplyTorque(-this.rotationTorque * accelerationInput);
+        const torqueReduction = map(Math.abs(currentAngle), 0, PI/2, 1.0, 0.2, true);
+        const adjustedTorque = this.rotationTorque * accelerationInput * torqueReduction;
+        
+        const velAdjustment = 1.0 - (Math.abs(angularVel) / maxAngularVel);
+        this.chassisBody.ApplyTorque(-adjustedTorque * velAdjustment);
     }
 
-    this.wheels[0].joint.SetMaxMotorTorque(700 * accelerationInput);
-    this.wheels[1].joint.SetMaxMotorTorque(350 * accelerationInput);
-  }
+    const stabilityTorque = -angularVel * (0.3 + (1.0 - stabilityFactor) * 0.7);
+    this.chassisBody.ApplyTorque(stabilityTorque);
 
-  // Unified motorOn that routes to appropriate method
+    const baseTorque = map(accelerationInput, 0.1, 1.0, 200, 700);
+    this.wheels[0].joint.SetMaxMotorTorque(baseTorque);
+    this.wheels[1].joint.SetMaxMotorTorque(baseTorque * 0.5);
+}
+
   motorOn(forward, accelerationInput) {
     if (accelerationInput !== undefined) {
       this.motorOnAdvanced(forward, accelerationInput);

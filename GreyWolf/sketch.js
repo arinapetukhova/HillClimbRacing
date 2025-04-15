@@ -186,15 +186,15 @@ function setup() {
   canvas.parent("canvas");
   frameRate(30);
 
-  //Initializing a population
   for (let i = 0; i < 50; i++) {
     population.push(new Player(false));
   }
-
+  createGround()
   resetGame();
 }
 
-function resetGame() {
+
+function createGround() {
   groundTemplate = new Ground();
   groundTemplate.randomizeGround();
 
@@ -202,6 +202,9 @@ function resetGame() {
     groundTemplate = new Ground();
     groundTemplate.randomizeGround();
   }
+}
+
+function resetGame() {
 
   otherWorld = new b2World(new Vec2(0, 10), true);
   curGround = new Ground(otherWorld);
@@ -254,7 +257,6 @@ function draw() {
     return;
   }
   targetPanX = nextPanX;
-  let tempMult = 1;
 
   if (bestPlayer && bestPlayer.car.chassisBody) {
     let carX = bestPlayer.car.chassisBody.GetPosition().x * SCALE;
@@ -302,18 +304,19 @@ function writeInfo() {
   text("Generation: " + generation, 100, 90);
 
   textSize(20);
-  for (let i = 0; i < bestScores.length; i++) {
+  let startIndex = max(0, bestScores.length - 5);
+  for (let i = startIndex; i < bestScores.length; i++) {
     text(
-      "Gen " + (generation - bestScores.length + i) + ": " + bestScores[i],
+      "Gen " + (generation - (bestScores.length - i)) + ": " + bestScores[i],
       100,
-      130 + i * 25
+      130 + (i - startIndex) * 25
     );
   }
 }
 
 function keyPressed() {
   if (key === " ") {
-    humanPlaying = !humanPlaying;
+    createGround();
     resetGame();
     return;
   }
@@ -358,72 +361,54 @@ function keyReleased() {
     }
   }
 }
-
 function nextGeneration() {
+  let bestInGeneration = population[0];
+  for (let player of population) {
+    if (player.bestScore > bestInGeneration.bestScore) {
+      bestInGeneration = player;
+    }
+  }
+
   population.sort((a, b) => b.bestScore - a.bestScore);
 
   bestScores.push(population[0].bestScore);
-  if (bestScores.length > 20) bestScores.shift();
 
-  let topPlayers = population.slice(0, 20);
-
-  population = [];
-
-  for (let i = 0; i < 10; i++) {
-    let player = topPlayers[i];
-    player.bestScore = 0;
-    population.push(player);
+  const eliteCount = 8;
+  const newPopulation = [];
+  
+  for (let i = 0; i < eliteCount; i++) {
+    let elite = population[i];
+    elite.bestScore = 0;
+    elite.addToWorld();
+    newPopulation.push(elite);
   }
 
-  for (let i = 10; i < 50; i++) {
-    let parentA = random(topPlayers);
-    let parentB = random(topPlayers);
-
-    let child = new Player(false);
-    child.brain = crossover(parentA.brain, parentB.brain);
-    child.brain.mutate(0.8, 0.3, 0.1);
-    population.push(child);
+  for (let i = eliteCount; i < population.length; i++) {
+    let newPlayer = new Player(false);
+    
+    let parent = population[Math.floor(Math.random() * eliteCount)];
+    newPlayer.brain = parent.brain.copy();
+    
+    const mutationRate = map(i, eliteCount, 50, 0.1, 0.7);
+    mutateBrain(newPlayer.brain, mutationRate, 0.4);
+    
+    newPopulation.push(newPlayer);
   }
 
+  population = newPopulation;
   generation++;
+  
+  resetGame();
 }
 
-function crossover(brainA, brainB) {
-  let newBrain = new NeuralNetwork(brainA.inputNodes, brainA.hiddenNodes);
-
-  for (let i = 0; i < brainA.weights_ih.length; i++) {
-    for (let j = 0; j < brainA.weights_ih[i].length; j++) {
-      newBrain.weights_ih[i][j] =
-        random() > 0.5 ? brainA.weights_ih[i][j] : brainB.weights_ih[i][j];
-    }
-  }
-
-  for (let i = 0; i < brainA.weights_ho.length; i++) {
-    for (let j = 0; j < brainA.weights_ho[i].length; j++) {
-      newBrain.weights_ho[i][j] =
-        random() > 0.5 ? brainA.weights_ho[i][j] : brainB.weights_ho[i][j];
-
-      if (random() < 0.1) {
-        newBrain.weights_ho[i][j] += random(-0.2, 0.2);
+function mutateBrain(brain, rate, strength) {
+  for (let layer of ['weights_ih', 'weights_ho']) {
+    for (let j = 0; j < brain[layer].length; j++) {
+      for (let k = 0; k < brain[layer][j].length; k++) {
+        if (Math.random() < rate) {
+          brain[layer][j][k] += (Math.random() - 0.5) * strength;
+        }
       }
     }
   }
-
-  for (let i = 0; i < brainA.bias_h.length; i++) {
-    newBrain.bias_h[i] = random() > 0.5 ? brainA.bias_h[i] : brainB.bias_h[i];
-
-    if (random() < 0.1) {
-      newBrain.bias_h[i] += random(-0.2, 0.2);
-    }
-  }
-
-  for (let i = 0; i < brainA.bias_o.length; i++) {
-    newBrain.bias_o[i] = random() > 0.5 ? brainA.bias_o[i] : brainB.bias_o[i];
-
-    if (random() < 0.1) {
-      newBrain.bias_o[i] += random(-0.2, 0.2);
-    }
-  }
-
-  return newBrain;
 }

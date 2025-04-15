@@ -1,10 +1,8 @@
 class Player {
   constructor(human = false) {
     this.human = human;
-    this.fitness = 0;
     this.vision = [];
     this.decision = [];
-    this.unadjustedFitness;
     this.lifespan = 0;
     this.bestScore = 0;
     this.dead = false;
@@ -53,7 +51,6 @@ class Player {
   move() {}
 
   loadPresetWeights() {
-    // Example preset weights that might work okay
     this.brain.weights_ih = [
       [1000, 1, 1, 1, 4],
       [1, 1, 1, 1, 4],
@@ -102,33 +99,30 @@ class Player {
 
   AIControl() {
     const inputs = this.getCarState();
-    const output = this.brain.predict(inputs); // Single value
-    console.log(output);
-    // Interpret output:
-    // > 0 = right acceleration (0-1)
-    // < 0 = left acceleration (0-1)
-    if (output > 0) {
-      this.car.motorOn(true, output); // Right with intensity
-    } else if (output < 0) {
-      this.car.motorOn(true, -output); // Left with intensity
+    const output = this.brain.predict(inputs);
+    
+    const scaledOutput = output * 0.5;
+    
+    if (scaledOutput > 0.1) {
+        this.car.motorOn(true, scaledOutput);
+    } else if (scaledOutput < -0.1) {
+        this.car.motorOn(false, -scaledOutput);
     } else {
-      this.car.motorOff();
+        this.car.motorOff();
     }
-  }
+}
 
   getCarState() {
-    // Get relevant car information
     const carPos = this.car.chassisBody.GetPosition();
     const carVel = this.car.chassisBody.GetLinearVelocity();
     const carAngle = this.car.chassisBody.GetAngle();
 
-    // Normalize inputs (values between 0 and 1)
     return [
-      (carPos.x - panX) / width, 
-      carVel.x / 20, 
-      carVel.y / 20, 
-      carAngle / Math.PI, 
-      this.car.wheels[0].onGround ? 1 : 0, 
+      (carPos.x - panX) / width,
+      carVel.x / 20,
+      carVel.y / 20,
+      (carAngle / Math.PI),
+      this.car.wheels[0].onGround ? 1 : 0
     ];
   }
 

@@ -24,18 +24,18 @@ class Ground {
 
     let totalDifference = 0;
     for (var i = 0; i < this.distance; i += this.smoothness) {
-      this.steepnessLevel = map(i, 0, this.distance, 130, 250);
+      this.steepnessLevel = map(i, 0, this.distance, 100, 180);
 
-      let flatLength = 500;
+      let flatLength = 800;
       let noisedY = noise(
-        startingPoint + (i - flatLength) / (700 - this.steepnessLevel)
+        startingPoint + (i - flatLength) / (1000 - this.steepnessLevel)
       );
-      let maxHeight = 300 + map(this.steepnessLevel, 0, 200, 0, 350);
+      let maxHeight = 250 + map(this.steepnessLevel, 0, 200, 0, 200);
       let minHeight = 30;
       let heightAddition = 0;
       if (i < flatLength) {
         noisedY = noise(startingPoint);
-        heightAddition = (flatLength - i) / 7;
+        heightAddition = (flatLength - i) / 10;
       }
 
       this.vectors.push(
