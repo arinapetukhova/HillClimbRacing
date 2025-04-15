@@ -88,10 +88,12 @@ var skySprite;
 var darknessSprite;
 var difficulty = 50;
 
+//Genetic algorithm population and tracking variables
 var population = [];
 var generation = 1;
 var bestScores = [];
 var grounds = [];
+
 var cameraOffsetX = 400;
 var cameraOffsetY = 200;
 
@@ -165,7 +167,7 @@ listener.EndContact = function (contact) {
     }
   }
 };
-
+//Preloads all image assets required for the game before setup
 function preload() {
   headSprite = loadImage("Pics/head.png");
   skySprite = loadImage("Pics/sky.png");
@@ -180,7 +182,7 @@ function preload() {
   grassSprites.push(loadImage("Pics/grass5.png"));
   grassSprites.push(loadImage("Pics/grass5.png"));
 }
-
+//Initializes the game canvas and world setup
 function setup() {
   window.canvas = createCanvas(1280, 720);
   canvas.parent("canvas");
@@ -192,7 +194,7 @@ function setup() {
   createGround();
   resetGame();
 }
-
+//Creates a ground template by randomizing terrain until a suitable non-steep ground is generated
 function createGround() {
   groundTemplate = new Ground();
   groundTemplate.randomizeGround();
@@ -202,7 +204,7 @@ function createGround() {
     groundTemplate.randomizeGround();
   }
 }
-
+//The function resets the game world to initial state
 function resetGame() {
   otherWorld = new b2World(new Vec2(0, 10), true);
   curGround = new Ground(otherWorld);
@@ -221,7 +223,8 @@ function resetGame() {
     player.car.maxDistance = 0;
   }
 }
-
+//Main game loop function
+//handles physics simulation, player updates, rendering, camera panning, and generation transitions
 function draw() {
   shownGround = false;
   drawToScreen();
@@ -280,12 +283,12 @@ function draw() {
     image(darknessSprite, 0, 400);
   }
 }
-
+//Draws the background elements to the screen (sky)
 function drawToScreen() {
   image(skySprite, 0, 0);
   writeInfo();
 }
-
+//Displays game information(score, generation)
 function writeInfo() {
   fill(255);
   stroke(255);
@@ -312,7 +315,7 @@ function writeInfo() {
     );
   }
 }
-
+//The function handles keyboard input for human player controls
 function keyPressed() {
   if (key === " ") {
     createGround();
@@ -337,7 +340,7 @@ function keyPressed() {
     }
   }
 }
-
+//The function handles keyboard release events for human player controls
 function keyReleased() {
   if (humanPlaying) {
     switch (keyCode) {
@@ -360,7 +363,7 @@ function keyReleased() {
     }
   }
 }
-
+//Advances to the next generation of players using genetic algorithm
 function nextGeneration() {
   population.sort((a, b) => b.bestScore - a.bestScore);
 
@@ -396,7 +399,7 @@ function nextGeneration() {
   population = newPopulation;
   generation++;
 }
-
+//The fuction performs crossover between two parent neural networks to create a child network.
 function crossover(brainA, brainB) {
   let newBrain = new NeuralNetwork(brainA.inputNodes, brainA.hiddenNodes);
 
