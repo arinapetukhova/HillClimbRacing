@@ -53,19 +53,6 @@ class Player {
 
   move() {}
 
-  loadPresetWeights() {
-    this.brain.weights_ih = [
-      [1000, 1, 1, 1, 4],
-      [1, 1, 1, 1, 4],
-      [1, 1, 1, 1, 4],
-      [1, 1, 1, 1, 4],
-    ];
-
-    this.brain.weights_ho = [
-      [3.4, 6.3, 7.5, 9.2],
-      [1.5, 9.2, 7.4, 8.3],
-    ];
-  }
   //The function for updating the player's state
   //if the player is alive, updates the score and the status of the machine
   //starts making a decision through the neural network and recalculates the score
