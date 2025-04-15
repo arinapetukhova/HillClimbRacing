@@ -1,3 +1,4 @@
+//Main Box2D variables
 var Vec2 = Box2D.Common.Math.b2Vec2;
 var b2BodyDef = Box2D.Dynamics.b2BodyDef;
 var b2Body = Box2D.Dynamics.b2Body;
@@ -8,25 +9,20 @@ var b2MassData = Box2D.Collision.Shapes.b2MassData;
 var b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape;
 var b2CircleShape = Box2D.Collision.Shapes.b2CircleShape;
 var b2EdgeChainDef = Box2D.Collision.Shapes.b2EdgeChainDef;
-
 var b2DebugDraw = Box2D.Dynamics.b2DebugDraw;
 var b2StaticBody = Box2D.Dynamics.b2Body.b2_staticBody;
 var b2DynamicBody = Box2D.Dynamics.b2Body.b2_dynamicBody;
 var b2RevoluteJoint = Box2D.Dynamics.Joints.b2RevoluteJoint;
 var b2RevoluteJointDef = Box2D.Dynamics.Joints.b2RevoluteJointDef;
-
 var b2PrismaticJoint = Box2D.Dynamics.Joints.b2PrismaticJoint;
-
 var b2PrismaticJointDef = Box2D.Dynamics.Joints.b2PrismaticJointDef;
-
 var b2FilterData = Box2D.Dynamics.b2FilterData;
-
 var b2DistanceJoint = Box2D.Dynamics.Joints.b2DistanceJoint;
 var b2DistanceJointDef = Box2D.Dynamics.Joints.b2DistanceJointDef;
-
 var b2WeldJoint = Box2D.Dynamics.Joints.b2WeldJoint;
 var b2WeldJointDef = Box2D.Dynamics.Joints.b2WeldJointDef;
 
+//variables necessary for the HCR implementation with GWO
 var SCALE = 30;
 var groundBody;
 var wheels = [];
@@ -88,6 +84,7 @@ var skySprite;
 var darknessSprite;
 var difficulty = 50;
 
+//GWO algorithm population and tracking variables
 var population = [];
 var generation = 1;
 var bestScores = [];
@@ -165,7 +162,7 @@ listener.EndContact = function (contact) {
     }
   }
 };
-
+//Preloads all image assets required for the game before setup
 function preload() {
   headSprite = loadImage("Pics/head.png");
   skySprite = loadImage("Pics/sky.png");
@@ -180,13 +177,12 @@ function preload() {
   grassSprites.push(loadImage("Pics/grass5.png"));
   grassSprites.push(loadImage("Pics/grass5.png"));
 }
-
+//Initializes the game canvas and world setup
 function setup() {
   window.canvas = createCanvas(1280, 720);
   canvas.parent("canvas");
   frameRate(30);
 
-  //Initializing a population
   for (let i = 0; i < 50; i++) {
     population.push(new Player(false));
   }
@@ -194,7 +190,7 @@ function setup() {
   resetGame();
 }
 
-
+//Creates a ground template by randomizing terrain until a suitable non-steep ground is generated
 function createGround() {
   groundTemplate = new Ground();
   groundTemplate.randomizeGround();
@@ -205,6 +201,7 @@ function createGround() {
   }
 }
 
+//The function resets the game world to initial state
 function resetGame() {
   otherWorld = new b2World(new Vec2(0, 10), true);
   curGround = new Ground(otherWorld);
@@ -224,6 +221,8 @@ function resetGame() {
   }
 }
 
+//Main game loop function
+//handles physics simulation, player updates, rendering, camera panning, and generation transitions
 function draw() {
   shownGround = false;
   drawToScreen();
@@ -257,7 +256,6 @@ function draw() {
     return;
   }
   targetPanX = nextPanX;
-  let tempMult = 1;
 
   if (bestPlayer && bestPlayer.car.chassisBody) {
     let carX = bestPlayer.car.chassisBody.GetPosition().x * SCALE;
@@ -283,11 +281,13 @@ function draw() {
   }
 }
 
+//Draws the background elements to the screen (sky)
 function drawToScreen() {
   image(skySprite, 0, 0);
   writeInfo();
 }
 
+//Displays game information(score, generation)
 function writeInfo() {
   fill(255);
   stroke(255);
@@ -315,6 +315,7 @@ function writeInfo() {
   }
 }
 
+//The function handles keyboard input for human player controls
 function keyPressed() {
   if (key === " ") {
     createGround();
@@ -340,6 +341,7 @@ function keyPressed() {
   }
 }
 
+//The function handles keyboard release events for human player controls
 function keyReleased() {
   if (humanPlaying) {
     switch (keyCode) {
@@ -363,20 +365,20 @@ function keyReleased() {
   }
 }
 
+//Creates next generation of AI players using GWO inspired algorithm
 function nextGeneration() {
-  let gbest = population[0];
-  for (let particle of population) {
-    if (particle.bestScore > gbest.bestScore) {
-      gbest = particle;
+  let bestInGeneration = population[0];
+  for (let player of population) {
+    if (player.bestScore > bestInGeneration.bestScore) {
+      bestInGeneration = player;
     }
   }
 
   population.sort((a, b) => b.bestScore - a.bestScore);
-  
-  bestScores.push(population[0].bestScore);
-  if (bestScores.length > 20) bestScores.shift();
 
-  const eliteCount = 9
+  bestScores.push(population[0].bestScore);
+
+  const eliteCount = 8;
   const newPopulation = [];
   
   for (let i = 0; i < eliteCount; i++) {
@@ -386,22 +388,33 @@ function nextGeneration() {
     newPopulation.push(elite);
   }
 
-  for (let i = eliteCount; i < 50; i++) {
-    let particle = new Player(false);
-    particle.brain = new NeuralNetwork(population[i].brain.inputNodes, population[i].brain.hiddenNodes);
+  for (let i = eliteCount; i < population.length; i++) {
+    let newPlayer = new Player(false);
     
-
-    particle.brain.weights_ih = population[i].brain.copyMatrix(population[i].brain.bestWeights_ih);
-    particle.brain.weights_ho = population[i].brain.copyMatrix(population[i].brain.bestWeights_ho);
+    let parent = population[Math.floor(Math.random() * eliteCount)];
+    newPlayer.brain = parent.brain.copy();
     
-    particle.brain.updateParticle(0, {
-      weights_ih: gbest.brain.bestWeights_ih,
-      weights_ho: gbest.brain.bestWeights_ho
-    });
+    const mutationRate = map(i, eliteCount, 50, 0.1, 0.7);
+    mutateBrain(newPlayer.brain, mutationRate, 0.4);
     
-    newPopulation.push(particle);
+    newPopulation.push(newPlayer);
   }
 
   population = newPopulation;
   generation++;
+  
+  resetGame();
+}
+
+//Mutates neural network weights
+function mutateBrain(brain, rate, strength) {
+  for (let layer of ['weights_ih', 'weights_ho']) {
+    for (let j = 0; j < brain[layer].length; j++) {
+      for (let k = 0; k < brain[layer][j].length; k++) {
+        if (Math.random() < rate) {
+          brain[layer][j][k] += (Math.random() - 0.5) * strength;
+        }
+      }
+    }
+  }
 }

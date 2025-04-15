@@ -1,4 +1,8 @@
+//Represents a driver character with physics-based head and torso
+//handles the physical simulation and rendering of the driver
 class Person {
+
+  //Creates a new driver character
   constructor(x, y, personWidth, personHeight, world) {
     this.world = world;
 
@@ -37,13 +41,16 @@ class Person {
     this.distJoint = this.world.CreateJoint(distJointDef);
   }
 
+  //Renders the driver character
   show() {
     this.head.show();
     this.torso.show();
   }
 }
 
+//Represents the driver's head with physics
 class Head {
+  //Creates a new head
   constructor(x, y, r, world) {
     this.world = world;
     this.startingPosition = createVector(x, y);
@@ -53,6 +60,7 @@ class Head {
     this.makeBody();
   }
 
+  //Creates the physics body for the head
   makeBody() {
     let bodyDef = new b2BodyDef();
     bodyDef.type = b2DynamicBody;
@@ -76,6 +84,7 @@ class Head {
     this.body.CreateFixture(fixDef).SetFilterData(filtData);
   }
 
+  //Renders the head
   show() {
     let x = this.body.GetPosition().x * SCALE;
     let y = this.body.GetPosition().y * SCALE;
@@ -95,6 +104,7 @@ class Head {
   }
 }
 
+//Represents the driver's torso with physics
 class Torso {
   constructor(centerX, centerY, height, width, world) {
     this.id = "torso";
@@ -106,6 +116,8 @@ class Torso {
     this.colour = color(0, 0, 0);
     this.makeBody();
   }
+
+  //Creates the physics body for the torso
   makeBody() {
     let bodyDef = new b2BodyDef();
     bodyDef.type = b2DynamicBody;
@@ -129,6 +141,7 @@ class Torso {
     this.body.CreateFixture(fixDef).SetFilterData(filtData);
   }
 
+  //Renders the torso
   show() {
     let x = this.body.GetPosition().x * SCALE;
     let y = this.body.GetPosition().y * SCALE;
