@@ -1,4 +1,7 @@
 class NeuralNetwork {
+  //Creating the neural network with one hidden layer
+  //sets the number of input, hidden, and output neurons
+  //initialize the weights and offsets with random values
   constructor(inputNodes, hiddenNodes) {
     this.inputNodes = inputNodes;
     this.hiddenNodes = hiddenNodes;
@@ -15,12 +18,13 @@ class NeuralNetwork {
     this.bestScore = -Infinity;
   }
 
-  
+  //The function generates a matrix of random weights for links between layers
   randomMatrix(rows, cols) {
     return Array.from({length: rows}, () => 
       Array.from({length: cols}, () => (Math.random() * 3 - 1) * 0.1)
     );
   }
+  //The function running the input data through the neural network
   predict(inputArray) {
     let hidden = new Array(this.hiddenNodes).fill(0);
     for (let i = 0; i < this.hiddenNodes; i++) {
@@ -38,15 +42,15 @@ class NeuralNetwork {
     
     return output;
   }
-
+//create zero matrix
   createZeroMatrix(matrix) {
     return matrix.map(row => row.map(() => 0));
   }
-
+//copy matrix
   copyMatrix(matrix) {
     return matrix.map(row => [...row]);
   }
-
+//Compares the current result with the best, if better, saves the weights
   updateParticle(personalScore, globalBestWeights) {
     const w = 1.3, c1 = 2.5, c2 = 1.4;
 
