@@ -17,7 +17,7 @@ Each algorithm is implemented in a separate directory:
 
 - `GeneticAlgorithm/`
 - `GrayWolf/`
-- `HCR_NN_Particle Swarm Optimization/`
+- `ParticleSwarmOptimization/`
 
 A detailed description and analysis of the results are provided in the `ProjectReport.pdf` file.
 
