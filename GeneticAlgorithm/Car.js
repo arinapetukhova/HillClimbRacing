@@ -1,4 +1,7 @@
+//Represents a physics-based car in the Hill Climb Racing simulation
+//handles all car physics, rendering, and motor control systems
 class Car {
+  //Creates a new car instance
   constructor(x, y, world, player) {
     this.world = world;
     this.player = player;
@@ -171,6 +174,7 @@ class Car {
 
     this.chassisBody.SetUserData(this);
   }
+  //Sets driver's shirt color
   setShirt() {
     this.person.torso.colour = color(
       this.player.shirtColorR,
@@ -179,6 +183,7 @@ class Car {
     );
   }
 
+  //Renders the car and all components
   show() {
     let x = this.chassisBody.GetPosition().x * SCALE;
     let y = this.chassisBody.GetPosition().y * SCALE;
@@ -205,7 +210,7 @@ class Car {
       this.maxDistance = x;
     }
   }
-
+  //Updates car state and checks for failures
   update() {
     let x = this.chassisBody.GetPosition().x * SCALE;
     let y = this.chassisBody.GetPosition().y * SCALE;
@@ -230,6 +235,7 @@ class Car {
     }
   }
 
+  //Simple motor control
   motorOnSimple(forward) {
     this.simpleMode = true;
     const motorSpeed = this.maxMotorSpeed;
@@ -258,6 +264,7 @@ class Car {
     this.wheels[1].joint.SetMaxMotorTorque(350);
   }
 
+  //Advanced motor control with acceleration input and stability management
   motorOnAdvanced(forward, accelerationInput = 1.0) {
     this.simpleMode = false;
 
@@ -339,6 +346,7 @@ class Car {
     this.wheels[1].joint.SetMaxMotorTorque(baseTorque * 0.5);
   }
 
+  //Unified motor control interface
   motorOn(forward, accelerationInput) {
     if (accelerationInput !== undefined) {
       this.motorOnAdvanced(forward, accelerationInput);
@@ -347,6 +355,7 @@ class Car {
     }
   }
 
+  //Stops the car's motors
   motorOff() {
     if (this.simpleMode) {
       switch (this.motorState) {
@@ -382,10 +391,12 @@ class Car {
     }
   }
 
+  //Linear interpolation helper
   lerp(start, end, t) {
     return start * (1 - t) + end * t;
   }
 
+  //Applies direct torque to chassis
   applyTorque(direction) {
     this.chassisBody.ApplyTorque(direction * this.rotationTorque);
   }
