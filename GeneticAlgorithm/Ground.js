@@ -1,4 +1,7 @@
+//Represents the terrain/ground in the Hill Climb Racing simulation
+//handles terrain generation, physics, and rendering
 class Ground {
+  //Creates a new ground instance
   constructor(world) {
     this.world = world;
 
@@ -19,6 +22,7 @@ class Ground {
     this.estimatedDIfficulty = 0;
   }
 
+  //Generates randomized terrain
   randomizeGround() {
     let startingPoint = random(100000);
 
@@ -90,6 +94,7 @@ class Ground {
     }
   }
 
+  //Checks if terrain is too steep for gameplay
   isTooSteep() {
     for (var v of this.vectors) {
       let oi = this.getPositions(v.x, 10, 1);
@@ -104,6 +109,7 @@ class Ground {
     return false;
   }
 
+  //Copies terrain from another Ground instance
   cloneFrom(otherGround) {
     for (var v of otherGround.vectors) {
       this.vectors.push(createVector(v.x, v.y));
@@ -112,7 +118,7 @@ class Ground {
       this.grassPositions.push(g);
     }
   }
-
+  //Creates physics bodies for the terrain
   setBodies(worldToAddTo) {
     this.world = worldToAddTo;
     this.makeBody();
@@ -143,6 +149,7 @@ class Ground {
     }
   }
 
+  //Renders the terrain with grass decorations
   show() {
     fill(88, 35, 0);
     stroke(0, 120, 0);
@@ -229,6 +236,8 @@ class Ground {
 
     pop();
   }
+
+  //Creates the base physics bodies
   makeBody() {
     var bodyDef = new b2BodyDef();
     bodyDef.type = b2StaticBody;
@@ -239,6 +248,8 @@ class Ground {
     this.dirtBody.SetUserData(this);
     this.grassBody.SetUserData(this);
   }
+
+  //Adds a physics edge between two points
   addEdge(vec1, vec2, mask, category, isGrass) {
     var fixDef = new b2FixtureDef();
     fixDef.friction = 0.99;
@@ -258,6 +269,7 @@ class Ground {
     }
   }
 
+  //Gets terrain heights at a position
   getPositions(x, numberOfPositions, skip) {
     var returnList = [];
     for (var i = 0; i < this.vectors.length; i++) {
@@ -277,6 +289,8 @@ class Ground {
     }
     return returnList;
   }
+
+  //Function to show terrain sampling points
   showPoints(x, numberOfPositions, skip) {
     push();
     translate(-panX, -panY);
