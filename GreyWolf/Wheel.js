@@ -1,4 +1,6 @@
 class Wheel {
+  //creates a wheel in the world
+  //the wheel itself is adjusted
   constructor(x, y, r, chassisBody, world) {
     this.startingPosition = createVector(x, y);
     this.radius = r;
@@ -61,7 +63,8 @@ class Wheel {
     }
     this.body.SetAngularDamping(1.8);
   }
-
+  //The function creates wheels with parameters(density, friction, elasticity and filters for collisions)
+  //interact with other objects in the world
   createBody() {
     let bodyDef = new b2BodyDef();
     bodyDef.type = b2DynamicBody;
@@ -84,7 +87,7 @@ class Wheel {
     this.body.CreateFixture(fixDef).SetFilterData(filtData);
     this.body.SetUserData(this);
   }
-
+  //The function renders the wheel on the screen
   show() {
     push();
 

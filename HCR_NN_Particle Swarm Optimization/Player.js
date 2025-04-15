@@ -26,7 +26,9 @@ class Player {
       this.brain = new NeuralNetwork(5, 4, 2);
     }
   }
-
+  //The function adds the player and his car to the world
+  //if the car already exists, then deletes it first to avoid duplication
+  //after that, it creates a new machine and resets the "dead" status
   addToWorld() {
     if (!this.world) return;
     if (this.car) {
@@ -37,7 +39,8 @@ class Player {
     this.dead = false;
     this.kindaDead = false;
   }
-
+  //The function displays the car on the screen
+  //renders the earth if it hasn't been rendered
   show() {
     if (!this.kindaDead || this.deadCount > 0) {
       this.car.show();
@@ -63,7 +66,10 @@ class Player {
       [1.5, 9.2, 7.4, 8.3],
     ];
   }
-
+  //The function for updating the player's state
+  //if the player is alive, updates the score and the status of the machine
+  //starts making a decision through the neural network and recalculates the score
+  //updates the best score
   update() {
     if (this.kindaDead) return;
 
@@ -96,21 +102,24 @@ class Player {
       }
     }
   }
-
+  //The function for controlling the machine
+  //transmits data on the state machine to the neural network
+  //according to output, decide accelerate or slow down
   AIControl() {
     const inputs = this.getCarState();
     const output = this.brain.predict(inputs);
-    
-    const scaledOutput = output * 0.5;    
-    if (scaledOutput > 0.1) {
-        this.car.motorOn(true, scaledOutput);
-    } else if (scaledOutput < -0.1) {
-        this.car.motorOn(false, -scaledOutput);
-    } else {
-        this.car.motorOff();
-    }
-}
 
+    const scaledOutput = output * 0.5;
+    if (scaledOutput > 0.1) {
+      this.car.motorOn(true, scaledOutput);
+    } else if (scaledOutput < -0.1) {
+      this.car.motorOn(false, -scaledOutput);
+    } else {
+      this.car.motorOff();
+    }
+  }
+  //The function returns the parameters of the current state of the machine
+  //input data(position, speed, angle) for a neural network
   getCarState() {
     const carPos = this.car.chassisBody.GetPosition();
     const carVel = this.car.chassisBody.GetLinearVelocity();
@@ -120,11 +129,12 @@ class Player {
       (carPos.x - panX) / width,
       carVel.x / 20,
       carVel.y / 20,
-      (carAngle / Math.PI),
+      carAngle / Math.PI,
       this.car.wheels[0].onGround ? 1 : 0,
     ];
   }
-
+  //The function collect information about the environment for the player's
+  //used to train a neural network or make decisions
   look() {
     this.vision = [];
     this.vision[0] = this.car.chassisBody.GetAngle();
@@ -176,7 +186,7 @@ class Player {
       this.vision.push(temp[i]);
     }
   }
-
+  //The fuction removes the machine from the world
   removePlayerFromWorld() {
     this.world.DestroyBody(this.car.chassisBody);
     this.world.DestroyBody(this.car.wheels[0].body);
@@ -186,6 +196,7 @@ class Player {
     this.world.DestroyBody(this.car.person.head.body);
     this.world.DestroyBody(this.car.person.torso.body);
   }
+  //The function remove the current car and create a new at the starting position
   resetCar() {
     this.world.DestroyBody(this.car.chassisBody);
     this.world.DestroyBody(this.car.wheels[0].body);
